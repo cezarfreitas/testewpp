@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import QRCodeDisplay from '@/components/QRCodeDisplay'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -14,6 +15,21 @@ export default function Home() {
           Conecte seu WhatsApp escaneando o QR Code
         </p>
         <QRCodeDisplay />
+        
+        <div className="mt-8 pt-8 border-t border-gray-200 space-y-3">
+          <Link
+            href="/send"
+            className="block w-full bg-green-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+          >
+            📤 Enviar Mensagem
+          </Link>
+          <Link
+            href="/messages"
+            className="block w-full bg-blue-600 text-white text-center py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            📨 Ver Mensagens Recebidas
+          </Link>
+        </div>
       </div>
     </main>
   )

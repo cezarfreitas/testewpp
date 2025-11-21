@@ -17,6 +17,8 @@ let connectionStatus = 'close';
 let isInitializing = false;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 3;
+let receivedMessages = []; // Array para armazenar mensagens recebidas
+const MAX_MESSAGES = 100; // Limite de mensagens armazenadas
 
 async function initWhatsApp() {
   if (sock && connectionStatus !== 'close') {
@@ -116,6 +118,34 @@ async function initWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 
+    // Listener para mensagens recebidas
+    sock.ev.on('messages.upsert', async (m) => {
+      const messages = m.messages || [];
+      
+      for (const msg of messages) {
+        // Ignorar mensagens próprias e status
+        if (msg.key.fromMe || !msg.message) continue;
+        
+        const messageData = {
+          id: msg.key.id,
+          from: msg.key.remoteJid?.replace('@s.whatsapp.net', '') || 'Desconhecido',
+          message: msg.message.conversation || 
+                   msg.message.extendedTextMessage?.text || 
+                   JSON.stringify(msg.message),
+          timestamp: new Date().toISOString(),
+          fullData: msg // Dados completos da mensagem
+        };
+        
+        // Adicionar à lista (manter apenas as últimas MAX_MESSAGES)
+        receivedMessages.unshift(messageData);
+        if (receivedMessages.length > MAX_MESSAGES) {
+          receivedMessages.pop();
+        }
+        
+        console.log('📨 Mensagem recebida:', messageData.from, '-', messageData.message.substring(0, 50));
+      }
+    });
+
     setTimeout(() => {
       isInitializing = false;
     }, 10000);
@@ -191,22 +221,59 @@ app.post('/api/restart', async (req, res) => {
   }
 });
 
-// Rota para enviar mensagem (exemplo)
+// Rota para enviar mensagem
 app.post('/api/send-message', async (req, res) => {
   try {
     const { number, message } = req.body;
+    
+    if (!number || !message) {
+      return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
+    }
     
     if (!sock || connectionStatus !== 'open') {
       return res.status(400).json({ error: 'WhatsApp não está conectado' });
     }
 
-    const jid = `${number}@s.whatsapp.net`;
+    // Formatar número (remover caracteres não numéricos)
+    const cleanNumber = number.replace(/\D/g, '');
+    const jid = `${cleanNumber}@s.whatsapp.net`;
+    
     await sock.sendMessage(jid, { text: message });
+    
+    console.log(`✅ Mensagem enviada para ${cleanNumber}`);
     
     res.json({ success: true, message: 'Mensagem enviada com sucesso' });
   } catch (error) {
     console.error('Erro ao enviar mensagem:', error);
-    res.status(500).json({ error: 'Erro ao enviar mensagem' });
+    res.status(500).json({ 
+      error: 'Erro ao enviar mensagem',
+      details: error.message 
+    });
+  }
+});
+
+// Rota para obter mensagens recebidas
+app.get('/api/messages', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      messages: receivedMessages,
+      count: receivedMessages.length
+    });
+  } catch (error) {
+    console.error('Erro ao obter mensagens:', error);
+    res.status(500).json({ error: 'Erro ao obter mensagens' });
+  }
+});
+
+// Rota para limpar mensagens
+app.delete('/api/messages', (req, res) => {
+  try {
+    receivedMessages = [];
+    res.json({ success: true, message: 'Mensagens limpas' });
+  } catch (error) {
+    console.error('Erro ao limpar mensagens:', error);
+    res.status(500).json({ error: 'Erro ao limpar mensagens' });
   }
 });
 
