@@ -4,7 +4,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Instalar dependências necessárias
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash net-tools
 
 # Copiar arquivos de dependências primeiro (para cache do Docker)
 COPY package*.json ./
@@ -33,7 +33,8 @@ RUN echo "=== Verificando estrutura de arquivos ===" && \
 RUN npm run build
 
 # Remover devDependencies após build para reduzir tamanho
-RUN npm prune --production
+# Mantendo concurrently que pode ser útil
+RUN npm prune --production --no-optional
 
 # Script para iniciar ambos os servidores
 COPY start.sh ./
