@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 interface Message {
   id: string
   from: string
+  groupId?: string | null
+  isGroup?: boolean
+  isList?: boolean
   message: string
   timestamp: string
   fullData?: any
@@ -116,7 +119,22 @@ export default function Messages() {
                     <div>
                       <div className="font-semibold text-green-600">
                         📱 {msg.from}
+                        {msg.isGroup && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            Grupo
+                          </span>
+                        )}
+                        {msg.isList && (
+                          <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                            Lista
+                          </span>
+                        )}
                       </div>
+                      {msg.groupId && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          Grupo/Lista ID: {msg.groupId.substring(0, 30)}...
+                        </div>
+                      )}
                       <div className="text-sm text-gray-500">
                         {formatDate(msg.timestamp)}
                       </div>

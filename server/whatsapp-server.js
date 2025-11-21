@@ -126,9 +126,30 @@ async function initWhatsApp() {
         // Ignorar mensagens próprias e status
         if (msg.key.fromMe || !msg.message) continue;
         
+        // Extrair número do remetente
+        let senderNumber = 'Desconhecido';
+        let groupId = null;
+        const remoteJid = msg.key.remoteJid || '';
+        
+        // Se tem participant, é mensagem de grupo - usar o participant como remetente
+        if (msg.key.participant) {
+          senderNumber = msg.key.participant.replace('@s.whatsapp.net', '').replace('@c.us', '');
+          groupId = remoteJid;
+        } else {
+          // Mensagem direta - usar remoteJid
+          senderNumber = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        }
+        
+        // Detectar se é grupo ou lista
+        const isGroup = remoteJid.includes('@g.us');
+        const isList = remoteJid.includes('@lid');
+        
         const messageData = {
           id: msg.key.id,
-          from: msg.key.remoteJid?.replace('@s.whatsapp.net', '') || 'Desconhecido',
+          from: senderNumber,
+          groupId: groupId ? groupId.replace('@g.us', '').replace('@lid', '') : null,
+          isGroup: isGroup,
+          isList: isList,
           message: msg.message.conversation || 
                    msg.message.extendedTextMessage?.text || 
                    JSON.stringify(msg.message),
@@ -142,7 +163,8 @@ async function initWhatsApp() {
           receivedMessages.pop();
         }
         
-        console.log('📨 Mensagem recebida:', messageData.from, '-', messageData.message.substring(0, 50));
+        const source = isGroup ? `Grupo ${groupId?.substring(0, 20)}` : (isList ? `Lista ${groupId?.substring(0, 20)}` : 'Direta');
+        console.log('📨 Mensagem recebida:', senderNumber, `(${source})`, '-', messageData.message.substring(0, 50));
       }
     });
 
